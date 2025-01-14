@@ -3,31 +3,9 @@ package org.example;
 import java.util.*;
 import java.util.regex.*;
 
-
 public class SimpleBot {
 
-    final String[] COMMON_PHRASES = {
-            "Нет ничего ценнее слов, сказанных к месту и ко времени.",
-            "Порой молчание может сказать больше, нежели уйма слов.",
-            "Перед тем как писать/говорить всегда лучше подумать.",
-            "Вежливая и грамотная речь говорит о величии души.",
-            "Приятно когда текст без орфографических ошибок.",
-            "Многословие есть признак неупорядоченного ума.",
-            "Слова могут ранить, но могут и исцелять.",
-            "Записывая слова, мы удваиваем их силу.",
-            "Кто ясно мыслит, тот ясно излагает.",
-            "Боюсь Вы что-то не договариваете."};
-    final String[] ELUSIVE_ANSWERS = {
-            "Вопрос непростой, прошу тайм-аут на раздумья.",
-            "Не уверен, что располагаю такой информацией.",
-            "Может лучше поговорим о чём-то другом?",
-            "Простите, но это очень личный вопрос.",
-            "Не уверен, что Вам понравится ответ.",
-            "Поверьте, я сам хотел бы это знать.",
-            "Вы действительно хотите это знать?",
-            "Уверен, Вы уже догадались сами.",
-            "Зачем Вам такая информация?",
-            "Давайте сохраним интригу?"};
+    // Шаблоны для анализа сообщений
     final Map<String, String> PATTERNS_FOR_ANALYSIS = new HashMap<String, String>() {{
         // hello
         put("хай", "hello");
@@ -68,7 +46,8 @@ public class SimpleBot {
         put("увидимся", "bye");
         put("до\\s.*свидания", "bye");
     }};
-    final Map<String, String> ANSWERS_BY_PATTERNS = new HashMap<String, String>() {{
+    // Ответы по шаблонам
+    final Map<String, String> ANSWERS_BY_PATTERNS = new HashMap<String, String>() {{ // добавить список строк
         put("hello", "Здравствуйте, рад Вас видеть.");
         put("who", "Я обычный чат-бот.");
         put("name", "Зовите меня Стив :)");
@@ -79,30 +58,45 @@ public class SimpleBot {
         put("yes", "Согласие есть продукт при полном непротивлении сторон.");
         put("bye", "До свидания. Надеюсь, ещё увидимся.");
     }};
-
+    // Переменные для работы с датой и регулярными выражениями
     Pattern pattern; // для регулярного выражения
-    Random random; // для случайных ответов
     Date date; // для указания даты и времени
 
     public SimpleBot() {
-        random = new Random();
         date = new Date();
     }
 
     public String sayInReturn(String msg, boolean ai) {
-        String say = (msg.trim().endsWith("?"))?
-                ELUSIVE_ANSWERS[random.nextInt(ELUSIVE_ANSWERS.length)]:
-                COMMON_PHRASES[random.nextInt(COMMON_PHRASES.length)];
-        if (ai) {
-            String message =
-                    String.join(" ", msg.toLowerCase().split("[ {,|.}?]+"));
-            for (Map.Entry<String, String> o : PATTERNS_FOR_ANALYSIS.entrySet()) {
-                pattern = Pattern.compile(o.getKey());
-                if (pattern.matcher(message).find())
-                    if (o.getValue().equals("whattime")) return date.toString();
-                    else return ANSWERS_BY_PATTERNS.get(o.getValue());
-            }
+
+        // Проверка на пустое сообщение
+        if (msg == null || msg.trim().isEmpty()) {
+            return "Пожалуйста, введите команду.";
         }
-        return say;
+
+        // Если активен режим ИИ, выполняется этот блок
+        if (ai) {
+            // Код на основе ИИ:
+            // Заглушка
+            return "Обработка ИИ: Извините, я пока не научился отвечать.";
+        } else {
+            // Преобразуем сообщение в нижний регистр и разбиваем на слова с удалением ненужных символов
+            String message = msg.toLowerCase().replaceAll("[\\s{,|.}?]+", " ").trim();
+            // Обработка шаблонов
+            for (Map.Entry<String, String> entry : PATTERNS_FOR_ANALYSIS.entrySet()) {
+                pattern = Pattern.compile(entry.getKey()); // Компиляция паттерна
+                // Проверка на соответствие шаблону
+                if (pattern.matcher(message).find()) {
+                    // Специальная обработка для запроса времени
+                    if ("whattime".equals(entry.getValue())) {
+                        return date.toString();
+                    }
+                    return ANSWERS_BY_PATTERNS.getOrDefault(entry.getValue(),
+                            "Не понимаю вашей команды, введите другую команду.");
+                    }
+                }
+            // Если ни один шаблон не подошел
+            return "Не понимаю вашей команды, введите другую команду.";
+        }
     }
 }
+
