@@ -45,6 +45,8 @@ public class SimpleBot {
         put("прощай", "bye");
         put("увидимся", "bye");
         put("до\\s.*свидания", "bye");
+        // math
+        put("^[0-9\\+\\-\\*/\\.\\(\\)\\s]+$", "math");
     }};
     // Ответы по шаблонам
     final Map<String, String> ANSWERS_BY_PATTERNS = new HashMap<String, String>() {{ // добавить список строк
@@ -57,6 +59,7 @@ public class SimpleBot {
         put("iamfeelling", "Как давно это началось? Расскажите чуть подробнее.");
         put("yes", "Согласие есть продукт при полном непротивлении сторон.");
         put("bye", "До свидания. Надеюсь, ещё увидимся.");
+        put("math", "Результат вычисления: ");
     }};
     // Переменные для работы с датой и регулярными выражениями
     Pattern pattern; // для регулярного выражения
@@ -90,6 +93,15 @@ public class SimpleBot {
                     if ("whattime".equals(entry.getValue())) {
                         return date.toString();
                     }
+                    // Обработка математических выражений
+                    if ("math".equals(entry.getValue())) {
+                        try {
+                            double result = evaluateExpression(message);
+                            return ANSWERS_BY_PATTERNS.get("math") + result;
+                        } catch (Exception e) {
+                            return "Ошибка при вычислении выражения.";
+                        }
+                    }
                     return ANSWERS_BY_PATTERNS.getOrDefault(entry.getValue(),
                             "Не понимаю вашей команды, введите другую команду.");
                     }
@@ -97,6 +109,132 @@ public class SimpleBot {
             // Если ни один шаблон не подошел
             return "Не понимаю вашей команды, введите другую команду.";
         }
+    }
+
+    // Метод для вычисления математического выражения
+
+    /** Метод принимает строковое математическое выражение и вычисляет его,
+     * обрабатывая операторы, числа и скобки с помощью двух стеков.
+     * Она учитывает приоритеты операторов и выполняет операции в правильном порядке.
+     */
+    public double evaluateExpression(String expression) throws Exception {
+        // Удаляем все пробелы из выражения
+        expression = expression.replaceAll("\\s+", "");
+
+        // Создаем два стека: один для чисел, другой для операторов
+        Stack<Double> numbers = new Stack<>();
+        Stack<Character> operators = new Stack<>();
+
+        int i = 0;
+        // Проходимся по всему выражению
+        while (i < expression.length()) {
+            char c = expression.charAt(i);
+
+            // Если символ является цифрой или точкой (для десятичных чисел)
+            if (Character.isDigit(c) || c == '.') {
+                StringBuilder number = new StringBuilder();
+                // Извлекаем полное число (включая дробную часть)
+                while (i < expression.length() && (Character.isDigit(expression.charAt(i)) || expression.charAt(i) == '.')) {
+                    number.append(expression.charAt(i));
+                    i++;
+                }
+                // Преобразуем строку в число и помещаем в стек
+                numbers.push(Double.parseDouble(number.toString()));
+            }
+            // Если символ — открывающаяся скобка
+            else if (c == '(') {
+                operators.push(c); // Добавляем её в стек операторов
+                i++;
+            }
+            // Если символ — закрывающаяся скобка
+            else if (c == ')') {
+                // Выполняем вычисление между скобками
+                while (!operators.isEmpty() && operators.peek() != '(') {
+                    calculate(numbers, operators);
+                }
+                operators.pop(); // Убираем '(' из стека операторов
+                i++;
+            }
+            // Если символ — оператор (+, -, *, /)
+            else if (isOperator(c)) {
+                // Выполняем вычисления с учетом приоритета оператора
+                while (!operators.isEmpty() && precedence(operators.peek()) >= precedence(c)) {
+                    calculate(numbers, operators);
+                }
+                operators.push(c); // Добавляем текущий оператор в стек
+                i++;
+            } else {
+                i++; // Продолжаем, если не символ, цифра или оператор
+            }
+        }
+
+        // Завершаем все оставшиеся вычисления
+        while (!operators.isEmpty()) {
+            calculate(numbers, operators);
+        }
+
+        // Проверяем, что остался только один результат в стеке чисел
+        if (numbers.size() != 1) {
+            throw new Exception("Ошибка в выражении.");
+        }
+        return numbers.pop(); // Возвращаем результат
+    }
+
+    // Проверка, является ли символ оператором
+    private boolean isOperator(char c) {
+        return c == '+' || c == '-' || c == '*' || c == '/';
+    }
+
+    // Определяет приоритет оператора
+    private int precedence(char operator) {
+        if (operator == '+' || operator == '-') {
+            return 1; // Низкий приоритет
+        }
+        if (operator == '*' || operator == '/') {
+            return 2; // Высокий приоритет
+        }
+        return -1; // Неизвестный оператор
+    }
+
+    /** Метод выполняет вычисление над двумя операндами (числами) с использованием оператора из стека операторов.
+     * Он предназначен для вычисления значений простых математических операций, таких как сложение, вычитание, умножение и деление.
+     */
+    private void calculate(Stack<Double> numbers, Stack<Character> operators) throws Exception {
+        // Проверка на наличие хотя бы двух чисел и оператора в стеке.
+        if (numbers.size() < 2 || operators.isEmpty()) {
+            throw new Exception("Ошибка в выражении.");
+        }
+        // Извлекаем два числа (операнда) из стека чисел.
+        double b = numbers.pop();
+        double a = numbers.pop();
+
+        // Извлекаем оператор из стека операторов.
+        char operator = operators.pop();
+
+        // Переменная для хранения результата вычисления.
+        double result;
+
+        // В зависимости от оператора выполняем соответствующую операцию.
+        switch (operator) {
+            case '+':
+                result = a + b;
+                break;
+            case '-':
+                result = a - b;
+                break;
+            case '*':
+                result = a * b;
+                break;
+            case '/':
+                // Проверка на деление на ноль.
+                if (b == 0) throw new Exception("Деление на ноль.");
+                result = a / b;
+                break;
+            default:
+                throw new Exception("Неизвестный оператор.");
+        }
+        // После вычисления, результат помещаем обратно в стек чисел.
+        numbers.push(result);
     }
 }
 
